@@ -1,13 +1,15 @@
 import os
 import argparse
-from typing import List
+import json
+from typing import List, Dict, Callable
+from pydantic import BaseModel
 
 from dotenv import load_dotenv
 from openai import OpenAI
 
 
-def set_api(model, temperature):
-    def get_response(messages: List) -> str:
+def set_api(model: str, temperature: float) -> Callable[[List[Dict[str, str]]], str]:
+    def get_response(messages: List[Dict[str, str]]) -> str:
         client = OpenAI(
             api_key=os.getenv("DASHSCOPE_API_KEY"),
             base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
@@ -23,8 +25,21 @@ def set_api(model, temperature):
     return get_response
 
 
+class Concept(BaseModel):
+    concept: str
+    meaning: str
+
+
+def load_concepts(concept_path: str) -> List[Concept]:
+    with open(concept_path, 'r') as f:
+        dataset = json.load(f)
+    return [Concept(concept=data['concept'].strip().lower(), meaning=data['meaning'])
+            for data in dataset]
+
+
 def main(args):
-    print(get_response([{"role": "user", "content": "请问你是谁？"}]))
+    concepts = load_concepts(args.concept_path)
+    print(concepts[0])
 
 
 if __name__ == '__main__':
